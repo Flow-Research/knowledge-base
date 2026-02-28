@@ -1,0 +1,115 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+
+const domain = 'protocol';
+const domainInfo = {
+  name: 'Protocol Engineering',
+  icon: '📡',
+  description: 'Network protocols, distributed consensus, and system design',
+  color: '#10b981',
+};
+
+const levels = [
+  { id: 'beginner', name: '🌱 Beginner', description: 'Foundational concepts' },
+  { id: 'intermediate', name: '📈 Intermediate', description: 'Practical skills' },
+  { id: 'master', name: '🎓 Master', description: 'Advanced topics' },
+];
+
+const categories = [
+  { id: 'article', name: 'Articles', icon: '📄' },
+  { id: 'tool', name: 'Tools', icon: '🔧' },
+  { id: 'resource', name: 'Resources', icon: '📚' },
+  { id: 'video', name: 'Videos', icon: '🎬' },
+];
+
+let articles = [];
+try {
+  articles = await getCollection(domain);
+} catch {
+  articles = [];
+}
+
+const byLevel = levels.map(level => ({
+  ...level,
+  items: articles.filter(a => a.data.level === level.id),
+}));
+---
+
+<Layout title={domainInfo.name} description={domainInfo.description}>
+  <section class="domain-header" style={`--domain-color: ${domainInfo.color}`}>
+    <div class="domain-icon">{domainInfo.icon}</div>
+    <h1>{domainInfo.name}</h1>
+    <p>{domainInfo.description}</p>
+  </section>
+  
+  <nav class="breadcrumb">
+    <a href="/">Home</a>
+    <span>/</span>
+    <span>Protocol</span>
+  </nav>
+  
+  <section class="levels-section">
+    {byLevel.map(level => (
+      <div class="level-section">
+        <h2>{level.name}</h2>
+        <p class="level-desc">{level.description}</p>
+        
+        <div class="categories">
+          {categories.map(cat => (
+            <a href={`/${domain}/${level.id}/${cat.id}`} class="category-card">
+              <span class="cat-icon">{cat.icon}</span>
+              <span class="cat-name">{cat.name}</span>
+              <span class="cat-count">
+                {level.items.filter(i => i.data.category === cat.id).length}
+              </span>
+            </a>
+          ))}
+        </div>
+        
+        {level.items.length > 0 && (
+          <div class="recent-items">
+            <h3>Recent Content</h3>
+            <ul>
+              {level.items.slice(0, 3).map(item => (
+                <li>
+                  <a href={`/${domain}/${item.slug}`}>
+                    {item.data.title}
+                  </a>
+                  <span class="item-category">{item.data.category}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    ))}
+  </section>
+</Layout>
+
+<style>
+  .domain-header { text-align: center; padding: 3rem 0 2rem; }
+  .domain-icon { font-size: 4rem; margin-bottom: 1rem; }
+  .domain-header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; color: var(--domain-color); }
+  .domain-header p { color: var(--muted); font-size: 1.125rem; }
+  .breadcrumb { margin-bottom: 2rem; color: var(--muted); font-size: 0.875rem; }
+  .breadcrumb a { color: var(--text); text-decoration: none; }
+  .breadcrumb span { margin: 0 0.5rem; }
+  .level-section { margin-bottom: 3rem; background: var(--card); border-radius: 1rem; padding: 2rem; }
+  .level-section h2 { font-size: 1.25rem; margin-bottom: 0.25rem; }
+  .level-desc { color: var(--muted); font-size: 0.875rem; margin-bottom: 1.5rem; }
+  .categories { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+  @media (max-width: 768px) { .categories { grid-template-columns: repeat(2, 1fr); } }
+  .category-card { display: flex; align-items: center; gap: 0.5rem; background: var(--bg); border: 1px solid var(--border); border-radius: 0.5rem; padding: 1rem; text-decoration: none; color: var(--text); transition: border-color 0.2s; }
+  .category-card:hover { border-color: var(--primary); }
+  .cat-icon { font-size: 1.25rem; }
+  .cat-name { flex: 1; font-size: 0.875rem; }
+  .cat-count { background: var(--primary); color: white; font-size: 0.75rem; padding: 0.125rem 0.5rem; border-radius: 1rem; }
+  .recent-items { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+  .recent-items h3 { font-size: 0.875rem; color: var(--muted); margin-bottom: 0.75rem; }
+  .recent-items ul { list-style: none; }
+  .recent-items li { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+  .recent-items a { color: var(--text); text-decoration: none; }
+  .recent-items a:hover { color: var(--primary); }
+  .item-category { font-size: 0.75rem; color: var(--muted); text-transform: capitalize; }
+</style>

@@ -1,0 +1,198 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const domains = [
+  {
+    id: 'ai',
+    name: 'Artificial Intelligence',
+    description: 'Machine learning, deep learning, LLMs, and AI applications',
+    icon: '🤖',
+    color: '#3b82f6',
+  },
+  {
+    id: 'blockchain',
+    name: 'Blockchain',
+    description: 'Smart contracts, DeFi, Web3, and distributed systems',
+    icon: '🔗',
+    color: '#f59e0b',
+  },
+  {
+    id: 'protocol',
+    name: 'Protocol Engineering',
+    description: 'Network protocols, distributed consensus, and system design',
+    icon: '📡',
+    color: '#10b981',
+  },
+];
+---
+
+<Layout title="Home">
+  <section class="hero">
+    <h1>Knowledge Base</h1>
+    <p>Curated AI-maintained knowledge for technology domains</p>
+  </section>
+  
+  <section class="domains">
+    <h2>Explore Domains</h2>
+    <div class="domain-grid">
+      {domains.map((domain) => (
+        <a href={`/${domain.id}`} class="domain-card" style={`--domain-color: ${domain.color}`}>
+          <span class="domain-icon">{domain.icon}</span>
+          <h3>{domain.name}</h3>
+          <p>{domain.description}</p>
+        </a>
+      ))}
+    </div>
+  </section>
+  
+  <section class="levels">
+    <h2>Learning Levels</h2>
+    <div class="level-grid">
+      <div class="level-card">
+        <h3>🌱 Beginner</h3>
+        <p>Foundational concepts and introductions</p>
+      </div>
+      <div class="level-card">
+        <h3>📈 Intermediate</h3>
+        <p>Practical skills and deeper understanding</p>
+      </div>
+      <div class="level-card">
+        <h3>🎓 Master</h3>
+        <p>Advanced topics and expert-level content</p>
+      </div>
+    </div>
+  </section>
+  
+  <section class="about">
+    <h2>About This Knowledge Base</h2>
+    <p>
+      This knowledge base is automatically maintained by AI agents that discover 
+      content from GitHub releases, academic papers, and curated sources. All 
+      content is reviewed by domain experts before publication.
+    </p>
+    <ul>
+      <li>✅ AI-discovered and generated content</li>
+      <li>✅ Human reviewed for quality</li>
+      <li>✅ Structured learning paths with prerequisites</li>
+      <li>✅ Multimodal: articles, videos, podcasts, papers</li>
+    </ul>
+  </section>
+</Layout>
+
+<style>
+  .hero {
+    text-align: center;
+    padding: 3rem 0;
+  }
+  
+  .hero h1 {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .hero p {
+    color: var(--muted);
+    font-size: 1.25rem;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--text);
+  }
+  
+  .domains, .levels, .about {
+    margin-bottom: 3rem;
+  }
+  
+  .domain-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .domain-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 2rem;
+    text-decoration: none;
+    color: var(--text);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .domain-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    border-color: var(--domain-color);
+  }
+  
+  .domain-icon {
+    font-size: 2.5rem;
+    display: block;
+    margin-bottom: 1rem;
+  }
+  
+  .domain-card h3 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .domain-card p {
+    color: var(--muted);
+    font-size: 0.875rem;
+  }
+  
+  .level-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+  
+  @media (max-width: 768px) {
+    .level-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  .level-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+  }
+  
+  .level-card h3 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .level-card p {
+    color: var(--muted);
+    font-size: 0.875rem;
+  }
+  
+  .about {
+    background: var(--card);
+    border-radius: 1rem;
+    padding: 2rem;
+  }
+  
+  .about p {
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+  
+  .about ul {
+    list-style: none;
+  }
+  
+  .about li {
+    color: var(--text);
+    padding: 0.25rem 0;
+  }
+</style>
