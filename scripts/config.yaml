@@ -76,7 +76,7 @@ ai:
     requests_per_minute: 50
     tokens_per_minute: 150000
   # API key loaded from environment variable
-  api_key_env: "ANTHROPIC_API_KEY"  # or OPENAI_API_KEY, DEEPSEEK_API_KEY
+  api_key_env: "OPENAI_API_KEY"  # or OPENAI_API_KEY, DEEPSEEK_API_KEY
 
 # GitHub Settings
 github:
@@ -118,3 +118,4 @@ retry:
   skip_on_errors:
     - "invalid_content"
     - "duplicate_detected"
+
