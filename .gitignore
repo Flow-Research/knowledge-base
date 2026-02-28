@@ -1,0 +1,42 @@
+.jarvis/
+
+
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build outputs
+build/
+dist/
+.docusaurus/
+.cache/
+
+# Environment variables
+.env
+.env.local
+
+# Agent state
+.agent-state/
+
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+
+# OS files
+.DS_Store
+Thumbs.db

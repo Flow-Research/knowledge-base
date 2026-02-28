@@ -1,0 +1,120 @@
+# Knowledge Base Agent Configuration
+
+# Agent Metadata
+agent:
+  name: "knowledge-base-agent"
+  version: "0.1.0"
+  log_level: "INFO"
+
+# Discovery Sources
+sources:
+  - id: "github_ai_releases"
+    type: "github"
+    enabled: true
+    query:
+      repos:
+        - "openai/openai-python"
+        - "anthropic/anthropic-sdk-python"
+        - "huggingface/transformers"
+      event_types: ["release", "tag"]
+    keywords: ["AI", "machine learning", "LLM", "transformer"]
+    domain: "ai"
+    level: "intermediate"
+    schedule: "weekly"
+
+  - id: "arxiv_cs_ai"
+    type: "arxiv"
+    enabled: true
+    query:
+      categories: ["cs.AI", "cs.LG", "cs.CL"]
+      max_results: 10
+      sort_by: "submittedDate"
+      sort_order: "descending"
+    keywords: ["transformer", "attention mechanism", "neural network"]
+    domain: "ai"
+    level: "master"
+    schedule: "weekly"
+
+  - id: "github_blockchain_releases"
+    type: "github"
+    enabled: false
+    query:
+      repos:
+        - "ethereum/go-ethereum"
+        - "bitcoin/bitcoin"
+      event_types: ["release"]
+    keywords: ["blockchain", "ethereum", "bitcoin"]
+    domain: "blockchain"
+    level: "intermediate"
+    schedule: "weekly"
+
+  - id: "arxiv_blockchain"
+    type: "arxiv"
+    enabled: false
+    query:
+      categories: ["cs.CR", "cs.DC"]
+      max_results: 10
+      sort_by: "submittedDate"
+      sort_order: "descending"
+    keywords: ["blockchain", "distributed ledger", "consensus"]
+    domain: "blockchain"
+    level: "master"
+    schedule: "weekly"
+
+# AI Generation Settings
+# Recommended: Claude Sonnet 4 for cost/quality balance
+# Claude Opus 4 for highest quality (1M context)
+# DeepSeek V3 for budget option
+ai:
+  provider: "anthropic"  # anthropic, openai, deepseek, ollama
+  model: "claude-sonnet-4-20250514"  # claude-opus-4-20250514, gpt-4-turbo-preview, deepseek-chat
+  max_tokens: 4000
+  temperature: 0.3
+  timeout: 120
+  prompt_caching: true
+  rate_limit:
+    requests_per_minute: 50
+    tokens_per_minute: 150000
+  # API key loaded from environment variable
+  api_key_env: "ANTHROPIC_API_KEY"  # or OPENAI_API_KEY, DEEPSEEK_API_KEY
+
+# GitHub Settings
+github:
+  owner: "your-org"  # Replace with your GitHub org/user
+  repo: "knowledge-base"  # Replace with your repo name
+  branch_prefix: "agent/content/"
+  pr_labels: ["ai-generated", "needs-review"]
+  auto_merge: false
+  reviewers: []  # Add GitHub usernames, e.g., ["@expert1", "@expert2"]
+  # Token loaded from environment variable GITHUB_TOKEN
+
+# Content Quality Settings
+quality:
+  min_sources: 1
+  max_similarity: 0.7
+  min_word_count: 500
+  max_word_count: 2000
+  required_sections: ["introduction"]
+
+# Deduplication Settings
+deduplication:
+  hash_algorithm: "sha256"
+  hash_fields: ["title", "body_preview"]  # First 500 chars
+  storage: ".agent-state/deduplication_hashes.json"
+
+# Agent State Storage
+state:
+  storage_path: ".agent-state/state.json"
+  failed_items_path: ".agent-state/failed_items.json"
+
+# Retry Configuration
+retry:
+  max_retries: 3
+  backoff_strategy: "exponential"  # exponential: 1s, 2s, 4s, 8s
+  retry_on_errors:
+    - "rate_limit"
+    - "timeout"
+    - "service_unavailable"
+  skip_on_errors:
+    - "invalid_content"
+    - "duplicate_detected"
