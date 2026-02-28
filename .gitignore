@@ -20,6 +20,9 @@ ENV/
 *.swo
 
 # Build outputs
+dist/
+.astro/
+.cache/
 build/
 dist/
 .docusaurus/

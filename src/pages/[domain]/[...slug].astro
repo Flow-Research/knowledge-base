@@ -1,0 +1,371 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+
+// Dynamic route - matches /ai/[...slug], /blockchain/[...slug], /protocol/[...slug]
+export async function getStaticPaths() {
+  const allContent = [];
+  
+  // Try to get content from each collection
+  for (const domain of ['ai', 'blockchain', 'protocol']) {
+    try {
+      const collection = await getCollection(domain);
+      collection.forEach(item => {
+        allContent.push({
+          params: { domain, slug: item.slug },
+          props: { item },
+        });
+      });
+    } catch {
+      // Collection doesn't exist yet
+    }
+  }
+  
+  return allContent;
+}
+
+const { domain, slug } = Astro.params;
+const { item } = Astro.props;
+
+// Redirect to home if no content found
+if (!item) {
+  return Astro.redirect('/');
+}
+
+const { Content } = await item.render();
+
+const levelLabels = {
+  beginner: '🌱 Beginner',
+  intermediate: '📈 Intermediate',
+  master: '🎓 Master',
+};
+
+const categoryIcons = {
+  article: '📄',
+  tool: '🔧',
+  resource: '📚',
+  video: '🎬',
+  audio: '🎧',
+  podcast: '🎙️',
+  youtube: '▶️',
+  arxiv: '📑',
+};
+---
+
+<Layout title={item.data.title} description={item.data.description}>
+  <nav class="breadcrumb">
+    <a href="/">Home</a>
+    <span>/</span>
+    <a href={`/${domain}`}>{domain.charAt(0).toUpperCase() + domain.slice(1)}</a>
+    <span>/</span>
+    <span>{item.data.title}</span>
+  </nav>
+  
+  <article class="article">
+    <header class="article-header">
+      <div class="article-meta">
+        <span class="level">{levelLabels[item.data.level]}</span>
+        <span class="category">
+          {categoryIcons[item.data.category]} {item.data.category}
+        </span>
+        {item.data.credibilityScore && (
+          <span class="credibility">⭐ {item.data.credibilityScore}/10</span>
+        )}
+      </div>
+      
+      <h1>{item.data.title}</h1>
+      
+      {item.data.description && (
+        <p class="description">{item.data.description}</p>
+      )}
+      
+      <div class="tags">
+        {(item.data.tags || []).map((tag: string) => (
+          <span class="tag">{tag}</span>
+        ))}
+      </div>
+    </header>
+    
+    {item.data.series && (
+      <div class="series-info">
+        <p>
+          📖 Part {item.data.sequence || '?'} of the <strong>{item.data.series}</strong> series
+        </p>
+        {item.data.prerequisites && item.data.prerequisites.length > 0 && (
+          <div class="prerequisites">
+            <strong>Prerequisites:</strong>
+            <ul>
+              {item.data.prerequisites.map((pre: string) => (
+                <li><a href={`/${domain}/${pre}`}>{pre}</a></li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    )}
+    
+    {item.data.mediaUrl && item.data.mediaType === 'video' && (
+      <div class="media-embed">
+        <iframe 
+          src={item.data.mediaUrl} 
+          title={item.data.title}
+          frameborder="0" 
+          allowfullscreen
+        />
+      </div>
+    )}
+    
+    <div class="article-content">
+      <Content />
+    </div>
+    
+    {item.data.learningOutcomes && item.data.learningOutcomes.length > 0 && (
+      <section class="learning-outcomes">
+        <h2>What You'll Learn</h2>
+        <ul>
+          {item.data.learningOutcomes.map((outcome: string) => (
+            <li>{outcome}</li>
+          ))}
+        </ul>
+      </section>
+    )}
+    
+    {item.data.next && (
+      <nav class="next-article">
+        <a href={`/${domain}/${item.data.next}`}>
+          Continue Learning →
+        </a>
+      </nav>
+    )}
+    
+    <footer class="article-footer">
+      <div class="sources">
+        <h3>Sources</h3>
+        <ul>
+          {item.data.sources.map((source: {url: string, title: string}) => (
+            <li>
+              <a href={source.url} target="_blank" rel="noopener">
+                {source.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+      
+      <div class="review-status">
+        {item.data.humanReviewed ? (
+          <span class="verified">✅ Human Reviewed</span>
+        ) : (
+          <span class="pending">⚠️ Pending Human Review</span>
+        )}
+      </div>
+      
+      <a 
+        href={`https://github.com/your-org/knowledge-base/issues/new?title=Feedback on: ${item.data.title}`}
+        class="feedback-link"
+      >
+        Report Issue or Suggest Edit
+      </a>
+    </footer>
+  </article>
+</Layout>
+
+<style>
+  .breadcrumb {
+    margin-bottom: 1rem;
+    color: var(--muted);
+    font-size: 0.875rem;
+  }
+  
+  .breadcrumb a {
+    color: var(--text);
+    text-decoration: none;
+  }
+  
+  .breadcrumb a:hover {
+    text-decoration: underline;
+  }
+  
+  .breadcrumb span {
+    margin: 0 0.5rem;
+  }
+  
+  .article {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  
+  .article-header {
+    margin-bottom: 2rem;
+  }
+  
+  .article-meta {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+  }
+  
+  .level, .category, .credibility {
+    background: var(--card);
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+  }
+  
+  .article-header h1 {
+    font-size: 2.25rem;
+    line-height: 1.2;
+    margin-bottom: 0.75rem;
+  }
+  
+  .description {
+    color: var(--muted);
+    font-size: 1.125rem;
+  }
+  
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+  
+  .tag {
+    background: var(--card);
+    color: var(--muted);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+  }
+  
+  .series-info {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .prerequisites {
+    margin-top: 0.75rem;
+  }
+  
+  .prerequisites ul {
+    margin-top: 0.5rem;
+    margin-left: 1.5rem;
+  }
+  
+  .prerequisites a {
+    color: var(--primary);
+  }
+  
+  .media-embed {
+    margin-bottom: 2rem;
+    position: relative;
+    padding-bottom: 56.25%;
+    height: 0;
+  }
+  
+  .media-embed iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 0.5rem;
+  }
+  
+  .article-content {
+    line-height: 1.75;
+  }
+  
+  .article-content :h2 {
+    margin-top: 2rem;
+  }
+  
+  .article-content :pre {
+    background: var(--card);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  
+  .article-content a {
+    color: var(--primary);
+  }
+  
+  .learning-outcomes {
+    background: var(--card);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin: 2rem 0;
+  }
+  
+  .learning-outcomes h2 {
+    font-size: 1.125rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .learning-outcomes ul {
+    margin-left: 1.5rem;
+  }
+  
+  .next-article {
+    margin: 2rem 0;
+    text-align: center;
+  }
+  
+  .next-article a {
+    display: inline-block;
+    background: var(--primary);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
+  }
+  
+  .article-footer {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+  }
+  
+  .sources h3 {
+    font-size: 0.875rem;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+  
+  .sources ul {
+    list-style: none;
+    margin-bottom: 1rem;
+  }
+  
+  .sources a {
+    color: var(--primary);
+    font-size: 0.875rem;
+  }
+  
+  .review-status {
+    margin: 1rem 0;
+  }
+  
+  .verified {
+    color: #10b981;
+  }
+  
+  .pending {
+    color: #f59e0b;
+  }
+  
+  .feedback-link {
+    display: inline-block;
+    color: var(--muted);
+    font-size: 0.875rem;
+    text-decoration: none;
+  }
+  
+  .feedback-link:hover {
+    color: var(--primary);
+  }
+</style>

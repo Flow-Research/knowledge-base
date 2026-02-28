@@ -1,0 +1,118 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+
+export async function getStaticPaths() {
+  try {
+    const articles = await getCollection('ai');
+    return articles.map(item => ({
+      params: { slug: item.slug },
+      props: { item: item, domain: 'ai' },
+    }));
+  } catch {
+    return [];
+  }
+}
+
+const { slug } = Astro.params;
+const { item, domain } = Astro.props;
+
+if (!item) {
+  return Astro.redirect('/');
+}
+
+const { Content } = await item.render();
+
+const levelLabels = {
+  beginner: '🌱 Beginner',
+  intermediate: '📈 Intermediate',
+  master: '🎓 Master',
+};
+
+const categoryIcons: Record<string, string> = {
+  article: '📄', tool: '🔧', resource: '📚', video: '🎬',
+  audio: '🎧', podcast: '🎙️', youtube: '▶️', arxiv: '📑',
+};
+---
+
+<Layout title={item.data.title} description={item.data.description}>
+  <nav class="breadcrumb">
+    <a href="/">Home</a>
+    <span>/</span>
+    <a href="/ai">AI</a>
+    <span>/</span>
+    <span>{item.data.title}</span>
+  </nav>
+  
+  <article class="article">
+    <header class="article-header">
+      <div class="article-meta">
+        <span class="level">{levelLabels[item.data.level]}</span>
+        <span class="category">{categoryIcons[item.data.category]} {item.data.category}</span>
+        {item.data.credibilityScore && <span class="credibility">⭐ {item.data.credibilityScore}/10</span>}
+      </div>
+      <h1>{item.data.title}</h1>
+      {item.data.description && <p class="description">{item.data.description}</p>}
+      <div class="tags">
+        {(item.data.tags || []).map((tag: string) => <span class="tag">{tag}</span>)}
+      </div>
+    </header>
+    
+    {item.data.series && (
+      <div class="series-info">
+        <p>📖 Part {item.data.sequence || '?'} of <strong>{item.data.series}</strong></p>
+        {item.data.prerequisites?.length > 0 && (
+          <div class="prerequisites">
+            <strong>Prerequisites:</strong>
+            <ul>{item.data.prerequisites.map((pre: string) => <li><a href={`/ai/${pre}`}>{pre}</a></li>)}</ul>
+          </div>
+        )}
+      </div>
+    )}
+    
+    <div class="article-content"><Content /></div>
+    
+    {item.data.next && <nav class="next-article"><a href={`/ai/${item.data.next}`}>Continue Learning →</a></nav>}
+    
+    <footer class="article-footer">
+      <div class="sources">
+        <h3>Sources</h3>
+        <ul>{item.data.sources.map((s: {url: string, title: string}) => <li><a href={s.url} target="_blank">{s.title}</a></li>)}</ul>
+      </div>
+      <div class="review-status">
+        {item.data.humanReviewed ? <span class="verified">✅ Human Reviewed</span> : <span class="pending">⚠️ Pending Review</span>}
+      </div>
+    </footer>
+  </article>
+</Layout>
+
+<style>
+  .breadcrumb { margin-bottom: 1rem; color: var(--muted); font-size: 0.875rem; }
+  .breadcrumb a { color: var(--text); text-decoration: none; }
+  .breadcrumb span { margin: 0 0.5rem; }
+  .article { max-width: 800px; margin: 0 auto; }
+  .article-header { margin-bottom: 2rem; }
+  .article-meta { display: flex; gap: 0.75rem; margin-bottom: 1rem; font-size: 0.875rem; }
+  .level, .category, .credibility { background: var(--card); padding: 0.25rem 0.75rem; border-radius: 1rem; }
+  .article-header h1 { font-size: 2.25rem; margin-bottom: 0.75rem; }
+  .description { color: var(--muted); font-size: 1.125rem; }
+  .tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+  .tag { background: var(--card); color: var(--muted); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; }
+  .series-info { background: var(--card); border-radius: 0.75rem; padding: 1rem; margin-bottom: 2rem; }
+  .prerequisites { margin-top: 0.75rem; }
+  .prerequisites ul { margin-left: 1.5rem; }
+  .prerequisites a { color: var(--primary); }
+  .article-content { line-height: 1.75; }
+  .article-content :global(h2) { margin-top: 2rem; }
+  .article-content :global(pre) { background: var(--card); border-radius: 0.5rem; padding: 1rem; overflow-x: auto; }
+  .article-content :global(a) { color: var(--primary); }
+  .next-article { margin: 2rem 0; text-align: center; }
+  .next-article a { background: var(--primary); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; display: inline-block; }
+  .article-footer { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+  .sources h3 { font-size: 0.875rem; color: var(--muted); margin-bottom: 0.5rem; }
+  .sources ul { list-style: none; }
+  .sources a { color: var(--primary); font-size: 0.875rem; }
+  .review-status { margin: 1rem 0; }
+  .verified { color: #10b981; }
+  .pending { color: #f59e0b; }
+</style>
