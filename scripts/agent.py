@@ -318,7 +318,7 @@ class KnowledgeBaseAgent:
         # Extract metadata
         domain = item.metadata.get("domain", "ai")
         level = item.metadata.get("level", "intermediate")
-        category = "article"  # Default category
+        category = "articles"  # Default category
 
         # Dry run check
         if hasattr(self, 'dry_run') and self.dry_run:

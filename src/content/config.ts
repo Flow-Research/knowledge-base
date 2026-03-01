@@ -6,7 +6,7 @@ const contentSchema = z.object({
   title: z.string().max(200),
   domain: z.enum(['ai', 'blockchain', 'protocol']),
   level: z.enum(['beginner', 'intermediate', 'master']),
-  category: z.enum(['article', 'tool', 'resource', 'video', 'audio', 'podcast', 'youtube', 'arxiv']),
+  category: z.enum(['articles', 'tool', 'resource', 'video', 'audio', 'podcast', 'youtube', 'arxiv']),
   tags: z.array(z.string()).max(10).default([]),
   
   // Metadata
