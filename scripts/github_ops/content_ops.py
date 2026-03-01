@@ -183,7 +183,7 @@ class ContentOps:
         Returns:
             File path string
         """
-        return f"content/{domain}/{level}/{category}/{slug}.md"
+        return f"src/content/{domain}/{level}/{category}/{slug}.md"
 
     def generate_slug(self, title: str) -> str:
         """Generate URL-friendly slug from title.
