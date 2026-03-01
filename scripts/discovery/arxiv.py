@@ -1,8 +1,8 @@
 """arXiv content discoverer."""
 
 import time
+import urllib.parse
 from datetime import datetime
-from typing import Optional
 
 import feedparser
 
@@ -29,7 +29,7 @@ class ArxivDiscoverer(BaseDiscoverer):
         self.sort_order = self.query_config.get("sort_order", "descending")
         self.keywords = config.get("keywords", [])
 
-    def discover(self, last_processed_id: Optional[str] = None) -> list[DiscoveredItem]:
+    def discover(self, last_processed_id: str | None = None) -> list[DiscoveredItem]:
         """Discover new papers from arXiv.
 
         Args:
@@ -44,10 +44,10 @@ class ArxivDiscoverer(BaseDiscoverer):
             try:
                 items = self._discover_category(category, last_processed_id)
                 discovered.extend(items)
-                
+
                 # Respect arXiv rate limit (1 req/sec recommended)
                 time.sleep(1)
-                
+
             except Exception as e:
                 # Log error and continue with next category
                 print(f"Error discovering from arXiv category {category}: {e}")
@@ -56,7 +56,7 @@ class ArxivDiscoverer(BaseDiscoverer):
         return discovered
 
     def _discover_category(
-        self, category: str, last_processed_id: Optional[str]
+        self, category: str, last_processed_id: str | None
     ) -> list[DiscoveredItem]:
         """Discover papers from a single category.
 
@@ -69,7 +69,7 @@ class ArxivDiscoverer(BaseDiscoverer):
         """
         # Build search query
         search_query = f"cat:{category}"
-        
+
         # Add keyword filters if specified
         if self.keywords:
             keyword_query = " OR ".join(f'all:"{kw}"' for kw in self.keywords)
@@ -82,18 +82,17 @@ class ArxivDiscoverer(BaseDiscoverer):
             "sortBy": self.sort_by,
             "sortOrder": self.sort_order,
         }
-        
-        query_string = "&".join(f"{k}={v}" for k, v in params.items())
-        url = f"{self.API_URL}?{query_string}"
 
+        query_string = urllib.parse.urlencode(params)
+        url = f"{self.API_URL}?{query_string}"
         # Fetch and parse feed
         feed = feedparser.parse(url)
-        
+
         items = []
         for entry in feed.entries:
             # Extract arXiv ID
             arxiv_id = entry.id.split("/abs/")[-1]
-            
+
             # Stop if we've reached the last processed paper
             if last_processed_id and arxiv_id == last_processed_id:
                 break
@@ -106,13 +105,13 @@ class ArxivDiscoverer(BaseDiscoverer):
             # Extract authors
             authors = []
             if hasattr(entry, "authors"):
-                authors = [author.name for author in entry.authors]
+                authors = [author.get("name", str(author)) if isinstance(author, dict) else getattr(author, "name", str(author)) for author in entry.authors]
             author = authors[0] if authors else None
 
             # Extract categories/tags
             tags = []
             if hasattr(entry, "tags"):
-                tags = [tag.term for tag in entry.tags]
+                tags = [tag.get("term", "") if isinstance(tag, dict) else getattr(tag, "term", "") for tag in entry.tags]
 
             item = DiscoveredItem(
                 title=entry.title,
@@ -128,7 +127,9 @@ class ArxivDiscoverer(BaseDiscoverer):
                     "arxiv_id": arxiv_id,
                     "category": category,
                     "authors": authors,
-                    "primary_category": entry.arxiv_primary_category.term
+                    "primary_category": entry.arxiv_primary_category.get("term", category)
+                    if hasattr(entry, "arxiv_primary_category") and isinstance(entry.arxiv_primary_category, dict)
+                    else getattr(entry.arxiv_primary_category, "term", category)
                     if hasattr(entry, "arxiv_primary_category")
                     else category,
                 },
@@ -137,7 +138,7 @@ class ArxivDiscoverer(BaseDiscoverer):
 
         return items
 
-    def _truncate(self, text: Optional[str], max_length: int) -> Optional[str]:
+    def _truncate(self, text: str | None, max_length: int) -> str | None:
         """Truncate text to max length.
 
         Args:

@@ -1,20 +1,33 @@
 """Model factory for creating LLM adapters."""
 
-from typing import Type
 
 from .anthropic import AnthropicAdapter
 from .base import BaseModelAdapter
-from .openai import DeepSeekAdapter, OllamaAdapter, OpenAIAdapter
+from .openai import (
+    DeepSeekAdapter,
+    GLMAdapter,
+    GroqAdapter,
+    KimiAdapter,
+    MinimaxAdapter,
+    OllamaAdapter,
+    OpenAIAdapter,
+    OpenRouterAdapter,
+)
 
 
 class ModelFactory:
     """Factory for creating model adapters."""
 
-    _adapters: dict[str, Type[BaseModelAdapter]] = {
+    _adapters: dict[str, type[BaseModelAdapter]] = {
         "anthropic": AnthropicAdapter,
         "openai": OpenAIAdapter,
         "deepseek": DeepSeekAdapter,
         "ollama": OllamaAdapter,
+        "glm": GLMAdapter,
+        "kimi": KimiAdapter,
+        "minimax": MinimaxAdapter,
+        "openrouter": OpenRouterAdapter,  # 25+ free models
+        "groq": GroqAdapter,              # ultra-fast free tier
     }
 
     @classmethod
@@ -44,7 +57,7 @@ class ModelFactory:
         return adapter_class(**kwargs)
 
     @classmethod
-    def register(cls, name: str, adapter_class: Type[BaseModelAdapter]) -> None:
+    def register(cls, name: str, adapter_class: type[BaseModelAdapter]) -> None:
         """Register a new adapter.
 
         This allows extending the factory with custom adapters.

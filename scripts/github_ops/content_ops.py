@@ -1,8 +1,6 @@
 """Git file operations for content management."""
 
 from datetime import datetime
-from pathlib import Path
-from typing import Optional
 
 from github import Github
 from github.GithubException import GithubException
@@ -214,7 +212,7 @@ class ContentOps:
         return slug
 
     def generate_branch_name(
-        self, domain: str, level: str, slug: str, timestamp: Optional[str] = None
+        self, domain: str, level: str, slug: str, timestamp: str | None = None
     ) -> str:
         """Generate branch name for PR.
 

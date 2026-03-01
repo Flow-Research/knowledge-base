@@ -81,15 +81,15 @@ github:
   repo: "knowledge-base"
 
 ai:
-  provider: "anthropic"  # or openai, deepseek
-  model: "claude-sonnet-4-20250514"
+  provider: "openai"  # or anthropic, deepseek
+  model: "gpt-5.2"
 ```
 
 5. **Set environment variables:**
 ```bash
 export GITHUB_TOKEN="your-github-token"
-export ANTHROPIC_API_KEY="your-anthropic-key"
-# or OPENAI_API_KEY, DEEPSEEK_API_KEY
+export OPENAI_API_KEY="your-openai-key"
+# or ANTHROPIC_API_KEY, DEEPSEEK_API_KEY
 ```
 
 6. **Run the agent:**
@@ -122,8 +122,8 @@ The system is configured via `scripts/config.yaml`:
 
 ```yaml
 ai:
-  provider: "anthropic"  # anthropic, openai, deepseek, ollama
-  model: "claude-sonnet-4-20250514"
+  provider: "openai"  # openai, anthropic, deepseek, ollama
+  model: "gpt-5.2"
   max_tokens: 4000
   temperature: 0.3
   rate_limit:

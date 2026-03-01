@@ -2,7 +2,6 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -12,7 +11,7 @@ class GenerationRequest:
     prompt: str
     max_tokens: int
     temperature: float
-    system_prompt: Optional[str] = None
+    system_prompt: str | None = None
 
 
 @dataclass

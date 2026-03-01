@@ -1,9 +1,7 @@
 """Content generator for creating markdown files with YAML frontmatter."""
 
 import re
-from datetime import datetime
-from pathlib import Path
-from typing import Optional
+from datetime import UTC, datetime
 
 import bleach
 import yaml
@@ -272,7 +270,10 @@ class ContentGenerator:
 
         # Recency (30%)
         if item.published_at:
-            days_old = (datetime.now() - item.published_at).days
+            now = datetime.now(UTC)
+            # If published_at is naive, assume UTC
+            pub_date = item.published_at if item.published_at.tzinfo else item.published_at.replace(tzinfo=UTC)
+            days_old = (now - pub_date).days
             if days_old < 30:
                 score += 3
             elif days_old < 180:

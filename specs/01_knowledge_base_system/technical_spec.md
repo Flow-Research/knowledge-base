@@ -489,7 +489,7 @@ ai:
     tokens_per_minute: 150000
 ai:
   provider: "openai"  # or "anthropic"
-  model: "gpt-4-turbo-preview"
+  model: "gpt-5.2"
   max_tokens: 2000
   temperature: 0.3
   timeout: 60
@@ -1210,15 +1210,37 @@ jobs:
   - `GET /repos/{owner}/{repo}/contents/{path}` - Read content
   - `PUT /repos/{owner}/{repo}/contents/{path}` - Write content
 - **Rate Limits:** 5000 requests/hour (authenticated)
-- **Error Handling:** Exponential backoff, max 3 retries
-- **Fallback:** Log error, continue to next item
+- **Rate Limit Monitoring:**
+  ```python
+  # Check response headers
+  remaining = int(response.headers['X-RateLimit-Remaining'])
+  reset_time = int(response.headers['X-RateLimit-Reset'])
+  
+  if remaining < 100:
+      logger.warning(f"GitHub API rate limit low: {remaining} remaining")
+      wait_until = datetime.fromtimestamp(reset_time)
+      time.sleep((wait_until - datetime.now()).total_seconds())
+  ```
+- **Error Handling by Status Code:**
+  - `200-299`: Success
+  - `401`: Invalid token → Alert admins, abort
+  - `403`: Rate limit → Wait until reset, resume
+  - `404`: Not found → Log warning, skip
+  - `422`: Validation error → Log details, skip
+  - `500-599`: Server error → Exponential backoff (1s, 2s, 4s), max 3 retries
+- **Circuit Breaker:** After 5 consecutive failures, pause for 5 minutes
+- **Partial Failure:** Continue processing remaining items
 
 #### arXiv API
 
 - **Documentation:** https://arxiv.org/help/api
 - **Endpoints Used:** `http://export.arxiv.org/api/query`
-- **Rate Limits:** 1 request per second recommended
-- **Error Handling:** 10-second timeout, skip on failure
+- **Rate Limits:** 1 request/second
+- **Implementation:** Sleep 1 second between requests
+- **Error Handling:**
+  - Timeout (10s): Skip paper
+  - HTTP 4xx/5xx: Retry once, then skip
+  - Malformed XML: Log error, skip
 
 ---
 

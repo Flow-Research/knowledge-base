@@ -4,7 +4,6 @@ import json
 import logging
 import sys
 from datetime import datetime
-from typing import Any
 
 
 class StructuredLogger:
@@ -24,6 +23,17 @@ class StructuredLogger:
         self.logger.handlers = []
 
         # Add JSON formatter
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(JSONFormatter())
+        self.logger.addHandler(handler)
+
+    def setLevel(self, level: str):
+        """Set log level.
+
+        Args:
+            level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        """
+        self.logger.setLevel(getattr(logging, level.upper()))
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(JSONFormatter())
         self.logger.addHandler(handler)

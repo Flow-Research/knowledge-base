@@ -4,7 +4,6 @@ import hashlib
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 
 class DeduplicationManager:
@@ -29,7 +28,7 @@ class DeduplicationManager:
             return {"hashes": {}, "last_updated": None, "total_hashes": 0}
 
         try:
-            with open(self.storage_path, "r") as f:
+            with open(self.storage_path) as f:
                 return json.load(f)
         except Exception as e:
             print(f"Error loading hashes: {e}")
@@ -71,8 +70,8 @@ class DeduplicationManager:
         return content_hash
 
     def is_duplicate(
-        self, title: str, body: Optional[str] = None
-    ) -> tuple[bool, Optional[str]]:
+        self, title: str, body: str | None = None
+    ) -> tuple[bool, str | None]:
         """Check if content is a duplicate.
 
         Args:
@@ -121,7 +120,7 @@ class DeduplicationManager:
                 # Potential collision - add timestamp suffix
                 timestamp = datetime.now().isoformat()
                 content_hash = self.generate_hash(title, f"{body_preview}||{timestamp}")
-                print(f"Warning: Hash collision detected, using timestamped hash")
+                print("Warning: Hash collision detected, using timestamped hash")
 
         # Store hash metadata
         self.hashes["hashes"][content_hash] = {

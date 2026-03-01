@@ -14,13 +14,13 @@ sources:
     query:
       repos:
         - "openai/openai-python"
-        - "anthropic/anthropic-sdk-python"
+        - "anthropics/anthropic-sdk-python"  # Correct repo name
         - "huggingface/transformers"
       event_types: ["release", "tag"]
     keywords: ["AI", "machine learning", "LLM", "transformer"]
     domain: "ai"
     level: "intermediate"
-    schedule: "weekly"
+    max_items: 10  # Limit items per source
 
   - id: "arxiv_cs_ai"
     type: "arxiv"
@@ -62,12 +62,20 @@ sources:
     schedule: "weekly"
 
 # AI Generation Settings
-# Recommended: Claude Sonnet 4 for cost/quality balance
-# Claude Opus 4 for highest quality (1M context)
-# DeepSeek V3 for budget option
+# Available providers: openai, anthropic, deepseek, ollama
+# FREE options (no credit card): openrouter (25+ models), groq (ultra-fast), ollama (local)
+# Chinese models: glm, kimi, minimax
+# Recommended model mapping:
+# ai:
+#   provider: "openai"  # openai, anthropic, deepseek, ollama, glm, kimi, minimax, openrouter, groq
+#   model: "gpt-5.2"  # gpt-5.2, gpt-5-mini, claude-sonnet-4, deepseek-chat
+                    # Free: meta-llama/llama-3.3-70b-instruct:free (openrouter), llama-3.3-70b-versatile (groq)
+                    # Chinese: glm-4-flash, moonshot-v1-8k, abab6.5s-chat
 ai:
-  provider: "anthropic"  # anthropic, openai, deepseek, ollama
-  model: "claude-sonnet-4-20250514"  # claude-opus-4-20250514, gpt-4-turbo-preview, deepseek-chat
+  provider: "openrouter"
+  model: "z-ai/glm-4.5-air:free"
+
+
   max_tokens: 4000
   temperature: 0.3
   timeout: 120
@@ -76,7 +84,9 @@ ai:
     requests_per_minute: 50
     tokens_per_minute: 150000
   # API key loaded from environment variable
-  api_key_env: "OPENAI_API_KEY"  # or OPENAI_API_KEY, DEEPSEEK_API_KEY
+  api_key_env: "OPENROUTER_API_KEY"  # OPENAI_API_KEY, ANTHROPIC_API_KEY, DEEPSEEK_API_KEY
+                                # OPENROUTER_API_KEY (free), GROQ_API_KEY (free)
+                                # GLM_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY
 
 # GitHub Settings
 github:
@@ -118,4 +128,3 @@ retry:
   skip_on_errors:
     - "invalid_content"
     - "duplicate_detected"
-

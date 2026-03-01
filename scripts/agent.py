@@ -4,7 +4,6 @@ import json
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from scripts.adapters import ModelFactory
 from scripts.config import Config
@@ -102,7 +101,7 @@ class KnowledgeBaseAgent:
             }
 
         try:
-            with open(state_path, "r") as f:
+            with open(state_path) as f:
                 return json.load(f)
         except Exception as e:
             self.logger.error("Failed to load state", error=str(e))
@@ -123,13 +122,24 @@ class KnowledgeBaseAgent:
         with open(state_path, "w") as f:
             json.dump(self.state, f, indent=2)
 
-    def run(self):
-        """Run the agent workflow."""
-        self.logger.info("Agent run started")
+    def run(self, dry_run=False, no_pr=False, source_filter=None, verbose=False):
+        """Run the agent workflow.
+
+        Args:
+            dry_run: If True, don't make any changes
+            no_pr: If True, generate content but skip PR creation
+            source_filter: Only run this source ID
+            verbose: Enable verbose logging
+        """
+        self.dry_run = dry_run
+        self.no_pr = no_pr
+        self.verbose = verbose
+
+        self.logger.info("Agent run started", dry_run=dry_run, no_pr=no_pr)
 
         try:
             # Discover content
-            discovered_items = self._discover_content()
+            discovered_items = self._discover_content(source_filter)
             self.logger.info("Discovery complete", item_count=len(discovered_items))
 
             # Generate and publish content
@@ -146,9 +156,11 @@ class KnowledgeBaseAgent:
         except Exception as e:
             self.logger.error("Agent run failed", error=str(e))
             raise
-
-    def _discover_content(self) -> list[DiscoveredItem]:
+    def _discover_content(self, source_filter=None) -> list[DiscoveredItem]:
         """Discover content from all sources.
+
+        Args:
+            source_filter: Only run this source ID (optional)
 
         Returns:
             List of discovered items
@@ -156,13 +168,25 @@ class KnowledgeBaseAgent:
         all_items = []
         sources = self.config.get_sources(enabled_only=True)
 
+        # Filter sources if specified
+        if source_filter:
+            sources = [s for s in sources if s["id"] == source_filter]
+            if not sources:
+                self.logger.warning("Source not found", source_id=source_filter)
+                return []
+
         github_token = self.config.get_github_config()["token"]
 
-        for source_config in sources:
+        for i, source_config in enumerate(sources):
             source_id = source_config["id"]
             source_type = source_config["type"]
 
-            self.logger.info("Discovering from source", source_id=source_id, source_type=source_type)
+            self.logger.info(
+                "Discovering from source",
+                source_id=source_id,
+                source_type=source_type,
+                progress=f"{i+1}/{len(sources)}"
+            )
 
             try:
                 # Get last processed ID for this source
@@ -179,8 +203,14 @@ class KnowledgeBaseAgent:
                     self.logger.warning("Unknown source type", source_type=source_type)
                     continue
 
-                # Discover items
+                # Discover items with progress
+                self.logger.debug("Starting discovery...", source_id=source_id)
                 items = discoverer.discover(last_processed_id)
+                self.logger.info(
+                    "Discovery complete",
+                    source_id=source_id,
+                    items_found=len(items)
+                )
 
                 if items:
                     # Update state with latest ID
@@ -198,15 +228,13 @@ class KnowledgeBaseAgent:
 
                     all_items.extend(items)
 
-                self.logger.info("Discovered items", source_id=source_id, count=len(items))
-
             except Exception as e:
                 self.logger.error("Discovery failed", source_id=source_id, error=str(e))
                 continue
 
         return all_items
 
-    def _get_latest_id(self, items: list[DiscoveredItem], source_type: str) -> Optional[str]:
+    def _get_latest_id(self, items: list[DiscoveredItem], source_type: str) -> str | None:
         """Get latest item ID for state tracking.
 
         Args:
@@ -216,6 +244,7 @@ class KnowledgeBaseAgent:
         Returns:
             Latest item ID or None
         """
+
         if not items:
             return None
 
@@ -242,17 +271,28 @@ class KnowledgeBaseAgent:
             "duplicates": 0,
         }
 
-        for item in items:
+        self.logger.info("Processing items", total=len(items))
+
+        for i, item in enumerate(items):
+            self.logger.debug(
+                "Processing item",
+                progress=f"{i+1}/{len(items)}",
+                title=item.title[:50]
+            )
             try:
                 result = self._process_item(item)
                 results[result] += 1
+                self.logger.info(
+                    "Item processed",
+                    status=result,
+                    progress=f"{i+1}/{len(items)}"
+                )
             except Exception as e:
-                self.logger.error("Item processing failed", title=item.title, error=str(e))
+                self.logger.error("Item processing failed", title=item.title[:50], error=str(e))
                 results["failed"] += 1
                 continue
 
         return results
-
     def _process_item(self, item: DiscoveredItem) -> str:
         """Process a single discovered item.
 
@@ -280,11 +320,21 @@ class KnowledgeBaseAgent:
         level = item.metadata.get("level", "intermediate")
         category = "article"  # Default category
 
+        # Dry run check
+        if hasattr(self, 'dry_run') and self.dry_run:
+            self.logger.info(
+                "[DRY-RUN] Would process item",
+                title=item.title[:50],
+                domain=domain,
+                level=level
+            )
+            return "skipped"
+
         # Rate limiting
         self.rate_limiter.wait_if_needed(estimated_tokens=4000)
 
         # Generate content
-        self.logger.info("Generating content", title=item.title)
+        self.logger.info("Generating content", title=item.title[:50])
         generated = self.generator.generate(item, domain, level, category)
 
         # Format as markdown
@@ -293,6 +343,28 @@ class KnowledgeBaseAgent:
         # Create slug and file path
         slug = self.content_ops.generate_slug(item.title)
         file_path = self.content_ops.generate_file_path(domain, level, category, slug)
+
+        if hasattr(self, 'verbose') and self.verbose:
+            self.logger.info(
+                "Generated content details",
+                file_path=file_path,
+                word_count=len(markdown_content.split())
+            )
+
+        # No-PR check: skip branch/commit/PR creation
+        if hasattr(self, 'no_pr') and self.no_pr:
+            self.logger.info(
+                "[NO-PR] Content generated (not creating PR)",
+                title=item.title[:50],
+                file_path=file_path
+            )
+            # Save to local file for inspection
+            output_dir = Path(".agent-state/generated")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            local_path = output_dir / f"{slug}.md"
+            local_path.write_text(markdown_content)
+            self.logger.info("Saved locally", path=str(local_path))
+            return "succeeded"
 
         # Create branch
         branch_name = self.content_ops.generate_branch_name(domain, level, slug)
@@ -333,7 +405,6 @@ class KnowledgeBaseAgent:
         self.dedup.add_hash(item.title, item.body or "", domain, level, file_path)
 
         return "succeeded"
-
     def _log_summary(self, results: dict):
         """Log run summary.
 
@@ -349,6 +420,110 @@ class KnowledgeBaseAgent:
         )
 
 
+def test_github_connection():
+    """Test GitHub API connection."""
+    import os
+
+    from github import Github
+
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        print("ERROR: GITHUB_TOKEN not set")
+        return
+
+    print("Testing GitHub API connection...")
+    client = Github(token)
+
+    # Check rate limit
+    print("\nChecking rate limit...")
+    rate = client.get_rate_limit()
+    print(f"Remaining: {rate.core.remaining}/{rate.core.limit}")
+
+    if rate.core.remaining < 10:
+        print("WARNING: Low API quota!")
+
+    # Test fetching a repo
+    print("\nFetching openai/openai-python...")
+    start = time.time()
+    repo = client.get_repo("openai/openai-python")
+    print(f"Got repo in {time.time()-start:.1f}s")
+
+    # Test fetching releases
+    print("\nFetching releases...")
+    start = time.time()
+    releases = list(repo.get_releases())[:3]
+    print(f"Got {len(releases)} releases in {time.time()-start:.1f}s")
+
+    for r in releases:
+        print(f"  - {r.tag_name}: {r.title[:50]}..." if r.title else f"  - {r.tag_name}")
+
+    print("\n✅ GitHub API connection successful!")
+
+
+def test_arxiv_connection():
+    """Test arXiv API connection."""
+    from .discovery import ArxivDiscoverer
+
+    print("Testing arXiv API connection...")
+
+    config = {
+        "id": "test",
+        "query": {"categories": ["cs.AI"], "max_results": 3},
+        "keywords": []
+    }
+
+    start = time.time()
+    discoverer = ArxivDiscoverer("test", config)
+    items = discoverer.discover()
+    print(f"Found {len(items)} papers in {time.time()-start:.1f}s")
+
+    for item in items[:3]:
+        print(f"  - {item.title[:60]}...")
+
+    print("\n✅ arXiv API connection successful!")
+
+
+def test_ai_connection():
+    """Test AI model connection."""
+    import os
+
+    from .adapters import GenerationRequest, ModelFactory
+
+    print("Testing AI model connection...")
+
+    # Check for API key
+    provider = os.environ.get("AI_PROVIDER", "openai")
+    key_env = f"{provider.upper()}_API_KEY"
+    api_key = os.environ.get(key_env)
+
+    if not api_key:
+        print(f"ERROR: {key_env} not set")
+        return
+
+    # Create adapter
+    adapter = ModelFactory.create(
+        provider=provider,
+        api_key=api_key,
+        model="claude-sonnet-4-20250514" if provider == "anthropic" else "gpt-5.2"
+    )
+
+    # Test generation
+    print(f"\nTesting {adapter.get_name()}...")
+    request = GenerationRequest(
+        prompt="What is 2+2? Answer with just the number.",
+        max_tokens=10,
+        temperature=0
+    )
+
+    start = time.time()
+    response = adapter.generate(request)
+    print(f"Response in {time.time()-start:.1f}s: {response.content.strip()}")
+    print(f"Tokens used: {response.usage}")
+
+    print("\n✅ AI model connection successful!")
+
+
+
 def main():
     """Main entry point."""
     import argparse
@@ -357,14 +532,41 @@ def main():
     parser.add_argument(
         "--config", default="scripts/config.yaml", help="Path to configuration file"
     )
-    parser.add_argument("--dry-run", action="store_true", help="Run in dry-run mode")
+    parser.add_argument("--dry-run", action="store_true", help="Run in dry-run mode (no changes)")
+    parser.add_argument("--no-pr", action="store_true", help="Generate content but skip PR creation")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
+    parser.add_argument("--source", help="Run specific source only (e.g., github_ai_releases)")
+    parser.add_argument("--test-github", action="store_true", help="Test GitHub API connection")
+    parser.add_argument("--test-arxiv", action="store_true", help="Test arXiv API connection")
+    parser.add_argument("--test-ai", action="store_true", help="Test AI model connection")
 
     args = parser.parse_args()
 
+    # Handle test modes
+    if args.test_github:
+        test_github_connection()
+        return
+    if args.test_arxiv:
+        test_arxiv_connection()
+        return
+    if args.test_ai:
+        test_ai_connection()
+        return
+
     # Initialize and run agent
     agent = KnowledgeBaseAgent(config_path=args.config)
-    agent.run()
 
+    # Set verbose mode
+    if args.verbose:
+        agent.logger.setLevel("DEBUG")
+
+    # Run with options
+    agent.run(
+        dry_run=args.dry_run,
+        no_pr=args.no_pr,
+        source_filter=args.source,
+        verbose=args.verbose
+    )
 
 if __name__ == "__main__":
     main()

@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 
@@ -32,7 +32,7 @@ class Config:
         if not self.config_path.exists():
             raise FileNotFoundError(f"Config file not found: {self.config_path}")
 
-        with open(self.config_path, "r") as f:
+        with open(self.config_path) as f:
             return yaml.safe_load(f)
 
     def get(self, key_path: str, default: Any = None) -> Any:
@@ -189,7 +189,7 @@ class Config:
 
         return errors
 
-    def save(self, output_path: Optional[str] = None) -> None:
+    def save(self, output_path: str | None = None) -> None:
         """Save configuration to file.
 
         Args:

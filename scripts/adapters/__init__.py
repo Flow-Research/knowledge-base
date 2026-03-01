@@ -3,7 +3,16 @@
 from .anthropic import AnthropicAdapter
 from .base import BaseModelAdapter, GenerationRequest, GenerationResponse
 from .factory import ModelFactory
-from .openai import DeepSeekAdapter, OllamaAdapter, OpenAIAdapter
+from .openai import (
+    DeepSeekAdapter,
+    GLMAdapter,
+    GroqAdapter,
+    KimiAdapter,
+    MinimaxAdapter,
+    OllamaAdapter,
+    OpenAIAdapter,
+    OpenRouterAdapter,
+)
 
 __all__ = [
     "BaseModelAdapter",
@@ -13,5 +22,10 @@ __all__ = [
     "OpenAIAdapter",
     "DeepSeekAdapter",
     "OllamaAdapter",
+    "GLMAdapter",
+    "KimiAdapter",
+    "MinimaxAdapter",
+    "OpenRouterAdapter",
+    "GroqAdapter",
     "ModelFactory",
 ]

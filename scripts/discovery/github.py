@@ -2,7 +2,6 @@
 
 import time
 from datetime import datetime
-from typing import Optional
 
 from github import Github
 from github.GithubException import GithubException, RateLimitExceededException
@@ -22,13 +21,14 @@ class GitHubDiscoverer(BaseDiscoverer):
             github_token: GitHub API token
         """
         super().__init__(source_id, config)
-        self.client = Github(github_token)
+        self.client = Github(github_token, timeout=30, per_page=100)  # 30s timeout
         self.query_config = config.get("query", {})
         self.repos = self.query_config.get("repos", [])
         self.event_types = self.query_config.get("event_types", ["release"])
         self.keywords = config.get("keywords", [])
+        self.max_items = config.get("max_items", 10)  # Limit items per source
 
-    def discover(self, last_processed_id: Optional[str] = None) -> list[DiscoveredItem]:
+    def discover(self, last_processed_id: str | None = None) -> list[DiscoveredItem]:
         """Discover new releases and tags from GitHub repositories.
 
         Args:
@@ -39,32 +39,49 @@ class GitHubDiscoverer(BaseDiscoverer):
         """
         discovered = []
 
-        for repo_name in self.repos:
+        for i, repo_name in enumerate(self.repos):
+            print(f"  [{i+1}/{len(self.repos)}] Fetching {repo_name}...")
             try:
-                items = self._discover_repo(repo_name, last_processed_id)
+                remaining = self.max_items - len(discovered)
+                if remaining <= 0:
+                    print(f"    Reached max_items limit ({self.max_items}), stopping")
+                    break
+
+                items = self._discover_repo(repo_name, last_processed_id, max_items=remaining)
                 discovered.extend(items)
-                
+                print(f"    Found {len(items)} items (total: {len(discovered)})")
+
+                # Check if we've hit the limit
+                if len(discovered) >= self.max_items:
+                    print(f"    Reached max_items limit ({self.max_items}), stopping")
+                    break
+
                 # Respect rate limits
                 time.sleep(0.5)
-                
+
             except RateLimitExceededException:
+                print("    Rate limited, waiting...")
                 # Wait for rate limit reset
                 rate_limit = self.client.get_rate_limit()
                 reset_time = rate_limit.core.reset
-                wait_time = (reset_time - datetime.now()).total_seconds()
+                now = datetime.now(reset_time.tzinfo) if hasattr(reset_time, 'tzinfo') and reset_time.tzinfo else datetime.now()
+                wait_time = (reset_time - now).total_seconds()
                 if wait_time > 0:
                     time.sleep(min(wait_time, 60))  # Max 1 minute wait
                 continue
-                
+
             except GithubException as e:
                 # Log error and continue with next repo
-                print(f"Error discovering from {repo_name}: {e}")
+                print(f"    Error: {e}")
+                continue
+            except Exception as e:
+                print(f"    Unexpected error: {e}")
                 continue
 
         return discovered
 
     def _discover_repo(
-        self, repo_name: str, last_processed_id: Optional[str]
+        self, repo_name: str, last_processed_id: str | None, max_items: int | None = None
     ) -> list[DiscoveredItem]:
         """Discover items from a single repository.
 
@@ -110,6 +127,8 @@ class GitHubDiscoverer(BaseDiscoverer):
                     },
                 )
                 items.append(item)
+                if max_items and len(items) >= max_items:
+                    return items
 
         # Discover tags (if not covered by releases)
         if "tag" in self.event_types:
@@ -120,7 +139,7 @@ class GitHubDiscoverer(BaseDiscoverer):
 
                 # Get commit for tag
                 commit = tag.commit
-                
+
                 item = DiscoveredItem(
                     title=f"{repo_name} - {tag.name}",
                     url=f"https://github.com/{repo_name}/releases/tag/{tag.name}",
@@ -139,6 +158,8 @@ class GitHubDiscoverer(BaseDiscoverer):
                     },
                 )
                 items.append(item)
+                if max_items and len(items) >= max_items:
+                    return items
 
         return items
 
@@ -158,7 +179,7 @@ class GitHubDiscoverer(BaseDiscoverer):
         content = f"{title} {body}".lower()
         return any(keyword.lower() in content for keyword in self.keywords)
 
-    def _extract_tags(self, body: Optional[str]) -> list[str]:
+    def _extract_tags(self, body: str | None) -> list[str]:
         """Extract tags from release body.
 
         Args:
@@ -172,13 +193,13 @@ class GitHubDiscoverer(BaseDiscoverer):
         if body:
             # Look for common patterns like #tag or [tag]
             import re
-            
+
             hashtags = re.findall(r"#(\w+)", body)
             tags.extend(hashtags[:5])  # Limit to 5 tags
-            
+
         return tags
 
-    def _truncate(self, text: Optional[str], max_length: int) -> Optional[str]:
+    def _truncate(self, text: str | None, max_length: int) -> str | None:
         """Truncate text to max length.
 
         Args:

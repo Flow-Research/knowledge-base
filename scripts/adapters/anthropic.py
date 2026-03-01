@@ -1,6 +1,5 @@
 """Anthropic (Claude) model adapter."""
 
-from typing import Optional
 
 from anthropic import Anthropic
 

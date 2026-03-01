@@ -24,7 +24,7 @@ class TestModelFactory:
         """Test creating OpenAI adapter."""
         adapter = ModelFactory.create("openai", api_key="test-key")
         assert isinstance(adapter, OpenAIAdapter)
-        assert adapter.get_name() == "openai:gpt-4-turbo-preview"
+        assert adapter.get_name() == "openai:gpt-5.2"
 
     def test_create_deepseek_adapter(self):
         """Test creating DeepSeek adapter."""

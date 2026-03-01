@@ -3,7 +3,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 
 @dataclass
@@ -17,11 +16,11 @@ class DiscoveredItem:
     discovered_at: datetime
 
     # Metadata
-    description: Optional[str] = None
-    author: Optional[str] = None
-    published_at: Optional[datetime] = None
+    description: str | None = None
+    author: str | None = None
+    published_at: datetime | None = None
     tags: list[str] = None
-    body: Optional[str] = None
+    body: str | None = None
 
     # Source-specific metadata
     metadata: dict = None
@@ -49,7 +48,7 @@ class BaseDiscoverer(ABC):
         self.enabled = config.get("enabled", True)
 
     @abstractmethod
-    def discover(self, last_processed_id: Optional[str] = None) -> list[DiscoveredItem]:
+    def discover(self, last_processed_id: str | None = None) -> list[DiscoveredItem]:
         """Discover new content from the source.
 
         Args:
